@@ -6,6 +6,9 @@
 int delimetersContain(const char*, char, size_t);
 int split(char*, const char*, char**);
 
+// FIXIT: постарайтесь использовать ф-ю strtok: всю ф-ю можно реализовать строк в 8 -> раза в 3 короче вашего варианта
+// идейно strtok делает ровно то же, что и вы в splite'e ... а раз можно использовать стандартную ф-ю, то лучше так и сделать
+
 int delimetersContain(const char* delimeters, char c, size_t n)    // tries no more than n delimeter characters
 {
     if (delimeters == NULL)
@@ -17,6 +20,8 @@ int delimetersContain(const char* delimeters, char c, size_t n)    // tries no m
     else
         return 0;
 }
+
+//
 
 int split(char* string, const char* delimeters, char** tokens)
 {
