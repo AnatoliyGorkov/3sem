@@ -15,6 +15,12 @@ int split(char* string, const char* delimeters, char** tokens)
     int i = 1;
     while((curr_word = strtok_r(NULL, delimeters, &saveptr)) != NULL)
         tokens[i++] = curr_word;
+    
+    // Так намного лучше. Ещё можно переименовать i в tokensCount или что-то вроде
+    // Плюс кажется, что можно избавиться от строки *tokens = curr_word; ,
+    // заменив цикл while на do-while. Ещё вам точно больше нравится gnu style,
+    // когда слова всегда пишутся со строчной буквы и разделяются подчеркиванием?
+    // currentWord меньше нравится, чем curr_word? Не настаиваю, дело вкуса.
     return i;
 }
 
