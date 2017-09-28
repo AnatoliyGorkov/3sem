@@ -2,7 +2,6 @@
 
 #include <stdlib.h>
 #include <string.h>
-#define MAX_DELIM_SIZE 1000
 
 int split(char* string, const char* delimeters, char** tokens)
 {
