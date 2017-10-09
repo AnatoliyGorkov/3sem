@@ -191,6 +191,9 @@ int main(int argc, char** argv)
             numberOfCalls++;
         i++;
     }
+    /*
+    fixit: вынесите все это чтение в буфер в отдельную ф-ю
+    */
 
     numberOfCalls++;    //to include that last line that may not end with \n
     char** lines = malloc(sizeof(*lines) * numberOfCalls);
@@ -224,6 +227,10 @@ int main(int argc, char** argv)
             fflush(logFile);
             exit(1);
         }
+        /*
+        fixit: а что, если к моменту запуска следующей задачи, предыдущая ещё не отработала ...
+        вы провисите в wait'е и пропустите момент запуска.
+        */
         wait(&status);
         printLog(logFile, &sleepStartTime, &awakeningTime, calls[i]);
     }
