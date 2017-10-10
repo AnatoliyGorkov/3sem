@@ -71,6 +71,7 @@ int callDestruct(Call* call)
 {
     if (call == NULL)
         return -1;
+    free(call -> argv);
     free(call);
     return 0;
 }
@@ -87,14 +88,13 @@ int callComparator(const void* a, const void* b)
 int printLog(FILE* logFile, const Timespec* sleepStartTime, const Timespec* execTime, const Call* call)
 {
     struct tm parsedTime;
-    size_t delayInNsecs = 0, seconds, nanoseconds;
+    size_t delayInNsecs = delayInNsecs = NSECSINSEC * (sleepStartTime -> tv_sec - execTime -> tv_sec) + sleepStartTime -> tv_nsec - execTime -> tv_nsec;
+    size_t seconds = delayInNsecs / NSECSINSEC;
+    size_t nanoseconds = delayInNsecs - seconds * NSECSINSEC;
+
     // if was late to call
-    if ((execTime -> tv_sec < sleepStartTime -> tv_sec) ||
-        (execTime -> tv_sec == sleepStartTime -> tv_sec && sleepStartTime -> tv_nsec - execTime -> tv_nsec >= DELAYPRECISION))
+    if (delayInNsecs > DELAYPRECISION)
     {
-        delayInNsecs = NSECSINSEC * (sleepStartTime -> tv_sec - execTime -> tv_sec) + sleepStartTime -> tv_nsec - execTime -> tv_nsec;
-        seconds = delayInNsecs / NSECSINSEC;
-        nanoseconds = delayInNsecs - seconds * NSECSINSEC;
         parsedTime = *(localtime_r(&(sleepStartTime -> tv_sec), &parsedTime));  //clock_nanosleep() hasn't started
     }
     else
@@ -111,7 +111,7 @@ int printLog(FILE* logFile, const Timespec* sleepStartTime, const Timespec* exec
     size_t fractPart = nanoseconds / DELAYPRECISION;
     while (call -> argv[i] != NULL)
         fprintf(logFile, "%s ", call -> argv[i++]);
-    if (delayInNsecs != 0)
+    if (delayInNsecs > DELAYPRECISION)
         fprintf(logFile, "\t[delay: %lu.%02lus]\n", seconds, fractPart);
     else
         fprintf(logFile, "\n");
@@ -119,31 +119,14 @@ int printLog(FILE* logFile, const Timespec* sleepStartTime, const Timespec* exec
     return 0;
 }
 
-int main(int argc, char** argv)
+char* readCommands(const char* filename)
 {
-    Timespec initTime;
-    clock_gettime(CLOCK_REALTIME, &initTime);
 
-    if (argc != 2)
-    {
-        fprintf(stderr, "Incorrect command line parameters\n");
-        return 1;
-    }
-
-    int inputFd = open(argv[1], O_RDONLY);
+    int inputFd = open(filename, O_RDONLY);
     if (inputFd == -1)
     {
         fprintf(stderr, "Input file hasn't been opened\n");
-        return 1;
-    }
-
-    char* logfileName = "timeExec.log";
-    FILE* logFile = fopen(logfileName, "w");
-    if (logFile == NULL)
-    {
-        fprintf(stderr, "Log file hasn't been created\n");
-        close(inputFd);
-        return 1;
+        return NULL;
     }
 
     size_t bufferSize = BUFFERBLOCKSIZE;
@@ -162,9 +145,7 @@ int main(int argc, char** argv)
             {
                 free(bufferCopy);
                 close(inputFd);
-                fclose(logFile);
                 fprintf(stderr, "Error in memory allocation\n");
-                return 1;
             }
         }
         bytesRead = read(inputFd, buffer + bytesReadTotal, BUFFERBLOCKSIZE);
@@ -173,16 +154,33 @@ int main(int argc, char** argv)
         {
             fprintf(stderr, "Some error occured in file reading\n");
             free(buffer);
-            fclose(logFile);
             close(inputFd);
-            return 1;
+            return NULL;
         }
 
         bytesReadTotal += bytesRead;
     } while (bytesRead == BUFFERBLOCKSIZE);
+    buffer[bytesReadTotal] = '\0';
 
-    buffer = realloc(buffer, bytesReadTotal);   // cuts the excess of bytes in buffer
+    buffer = realloc(buffer, (bytesReadTotal + 1) * sizeof(*buffer));   // cuts the excess of bytes in buffer
     close(inputFd);
+    return buffer;
+}
+
+int main(int argc, char** argv)
+{
+    Timespec initTime;
+    clock_gettime(CLOCK_REALTIME, &initTime);
+
+    if (argc != 2)
+    {
+        fprintf(stderr, "Incorrect command line parameters\n");
+        return 1;
+    }
+
+    char* buffer = readCommands(argv[1]);
+    if (buffer == NULL)
+        return 1;
 
     size_t numberOfCalls = 0, i = 0;
     while(buffer[i] != '\0' && buffer[i] != EOF)
@@ -191,14 +189,11 @@ int main(int argc, char** argv)
             numberOfCalls++;
         i++;
     }
-    /*
-    fixit: вынесите все это чтение в буфер в отдельную ф-ю
-    */
 
     numberOfCalls++;    //to include that last line that may not end with \n
     char** lines = malloc(sizeof(*lines) * numberOfCalls);
 
-    char lineDelimeters[] = {'\n', EOF};
+    char lineDelimeters[] = {'\n', EOF, '\0'};
     numberOfCalls = split(buffer, lineDelimeters, lines);
 
     Call** calls = malloc(sizeof(*calls) * numberOfCalls);
@@ -209,10 +204,18 @@ int main(int argc, char** argv)
 
     qsort(calls, numberOfCalls, sizeof(*calls), callComparator);
 
+    char* logfileName = "timeExec.log";
+    FILE* logFile = fopen(logfileName, "w");
+    if (logFile == NULL)
+    {
+        fprintf(stderr, "Log file hasn't been created\n");
+        free(buffer);
+        return 1;
+    }
     Timespec awakeningTime;
     Timespec sleepStartTime;
     pid_t pid;
-    int status;
+
     for(i = 0; i < numberOfCalls; i++)
     {
         awakeningTime.tv_sec = initTime.tv_sec + calls[i] -> delay;
@@ -222,22 +225,22 @@ int main(int argc, char** argv)
         pid = fork();
         if (pid == 0)
         {
+            //printLog(logFile, &sleepStartTime, &awakeningTime, calls[i]);
+            /*
+                Теперь printlog работает не совсем корректно (программы в .log файле не в том порядкеБ в котором запускаются)
+                Как можно это исправить? (узнать реальное время запуска программы)
+            */
             execvp(calls[i] -> argv[0], calls[i] -> argv);
-            fprintf(logFile, "EXECUTION ERROR\t");
-            fflush(logFile);
             exit(1);
         }
-        /*
-        fixit: а что, если к моменту запуска следующей задачи, предыдущая ещё не отработала ...
-        вы провисите в wait'е и пропустите момент запуска.
-        */
-        wait(&status);
-        printLog(logFile, &sleepStartTime, &awakeningTime, calls[i]);
     }
 
     for(i = 0; i < numberOfCalls; i++)
         callDestruct(calls[i]);
-
+    int status;
+    for(i = 0; i < numberOfCalls; i++)
+        wait(&status);
+    free(calls);
     free(buffer);
     fclose(logFile);
     return 0;
