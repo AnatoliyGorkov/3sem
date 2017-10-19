@@ -73,7 +73,7 @@ int main(int argc, char** argv)
             }
 
             timeTotal /= tnum;
-            fprintf(file, "%d\t%lu.%lu\n", k, timeTotal / (size_t) NSEC, (timeTotal % (size_t) NSEC) / (size_t) USEC);
+            fprintf(file, "%d\t%lu.%03lu\n", k, timeTotal / (size_t) NSEC, (timeTotal % (size_t) NSEC) / (size_t) USEC);
 
         }
         fprintf(file, "---------------\n");
