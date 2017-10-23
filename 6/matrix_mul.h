@@ -25,6 +25,10 @@ int transponate(mvalue_t* matrix, size_t n)
     for (i = 1; i < n; i++)
         for (j = 0; j < i; j++)
         {
+            /*
+                лучще даже небольшие куски кода, которые выполняют нечто законченное, выносить в отдельную ф-ю
+                ... void swap(mvalue_t* lhs, mvalue_t* rhs);
+            */
             swap = *(matrix + i * n + j);
             *(matrix + i * n + j) = *(matrix + j * n + i);
             *(matrix + j * n + i) = swap;
@@ -44,7 +48,14 @@ void* threadMultiply(void* args)  //second matrix is taken transponated
         for (j = 0; j < n; j++)
             for (k = 0; k < n; k++)
                 *(c + i * n + j) += (*(a + i * n + k)) * (*(b + j * n + k)); //c[i][j] += a[i][k] * b[j][k]
+    /*
+    https://stackoverflow.com/questions/20467117/for-matrix-operation-why-is-ikj-faster-than-ijk
+    можно халявно заставить код работать побыстрее, поменяв порядок обращения к памяти
+    */
     pthread_exit(NULL);
+    /*
+    А зачем здесь pthread_exit явно писать? Нить же итак завершится, дойдя до закрывающейся скобки.
+    */
 }
 
 mvalue_t* matrixMul(mvalue_t* matrixA, mvalue_t* matrixB, size_t n, size_t numberOfThreads)
