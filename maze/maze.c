@@ -111,37 +111,50 @@ int* findDistances(const char* maze, size_t width, size_t height, int start, int
 }
 
 
-int findPath(char* maze, int* distance, size_t width, size_t height, int start, int end, FILE* file)
+int findPath(char* maze, int* distance, size_t width, size_t height, int start, int end)
 {
     if (distance[end] == 0)
     {
         return 0;
     }
-    int neighbour, current, column;
+    int neighbour, current;
     int totalSize = width * height;
     current = end;
 
-    while(current != start)
+    while(distance[current] != 1)
     {
         //up
-        neighbour = current - width;
-        while (neighbour >= 0 && distance[current] - distance[neighbour] == 1 && (current = neighbour) != start)
-            maze[current] = '+';
-
+        while ( (neighbour = (long) current - (long) width) >= 0 && distance[current] - distance[neighbour] == 1 && distance[current] != 1)
+        {
+            if (current != end)
+                maze[current] = '+';
+            current = neighbour;
+        }
         //down
-        neighbour = current + width;
-        while (neighbour < totalSize && distance[current] - distance[neighbour] == 1 && (current = neighbour) != start)
-            maze[current] = '+';
+        while ((neighbour = current + width) < totalSize && distance[current] - distance[neighbour] == 1 && distance[current] != 1)
+        {
+            if (current != end)
+                maze[current] = '+';
+            current = neighbour;
+        }
 
-        column = current % width;
+        //column = current % width;
 
         //left
-        while (column != 0 && distance[current] - distance[current - 1] == 1 && (current -= 1) != start)
-            maze[current] = '+';
+        while (current % width != 0 && current != 0 && distance[current] - distance[current - 1] == 1 && distance[current] != 1)
+        {
+            if (current != end)
+                maze[current] = '+';
+            current--;
+        }
 
         //right
-        while (column != width - 1 && distance[current] - distance[current + 1] == 1 && (current += 1) != start)
+        while (current % width != width - 1 && current < totalSize - 1 && distance[current] - distance[current + 1] == 1 && distance[current] != 1)
+        {
+            if (current != end)
                 maze[current] = '+';
+            current++;
+        }
 
     }
     
@@ -260,7 +273,7 @@ int main(int argc, char** argv)
     int start = findPosition(maze, 'H');
     int end = findPosition(maze, '$');
     int* distance = findDistances(maze, width, height, start, end, obstacles);
-    int pathLength = findPath(maze, distance, width, height, start, end, output);
+    int pathLength = findPath(maze, distance, width, height, start, end);
     printPath(maze, pathLength, width, height, start, end, output, obstacles);
     fclose(output);
     free(maze);
