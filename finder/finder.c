@@ -10,16 +10,28 @@
 #define PATHSIZE 64
 #define MAX_DNAME_SIZE 256
 
-int finderRecursive(char* name, Path* path, int depth, int currentLevel)    //1 if found, 0 if not, -1 if error
+/*
+заменить 1, 0, -1 на enum
+*/
+enum Result {
+	Found,
+	NotFound,
+	Error
+};
+
+/*
+можно обойтись без дополнительной  currentLevel
+*/
+Result finderRecursive(char* name, Path* path, int depth, int currentLevel)    //1 if found, 0 if not, -1 if error
 {
     if (currentLevel > depth)
-        return 0;
+        return NotFound;
     if (path == NULL || path -> name == NULL)
-        return -1;
+        return Error;
     int retval;
     DIR* dir = opendir(path -> name);
     if (dir == NULL)
-        return -1;
+        return Error;
     struct dirent* dirent;
     while((dirent = readdir(dir)) != NULL)
     {
