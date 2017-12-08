@@ -9,15 +9,11 @@ typedef struct ThreadInfo_
     int qid;
 } ThreadInfo;
 
-/*
-fixit: называйте типы в одном стиле: QueueValue_t
-заглавная первая буква
-*/
-typedef struct qvalue_t_
+typedef struct QueueValue_t_
 {
     long mtype;
     int freeThread;
-} qvalue_t;
+} QueueValue_t;
 
 void* threadMult(void* args)
 {
@@ -28,7 +24,7 @@ void* threadMult(void* args)
     answer.data.c = (threadInfo -> request).data.a * (threadInfo -> request).data.b;
     msgsnd(threadInfo -> msgid, &answer, sizeof(answer.data), 0);
 
-    qvalue_t qvalue = {QUEUE_CHANNEL, threadInfo -> thread};
+    QueueValue_t qvalue = {QUEUE_CHANNEL, threadInfo -> thread};
     sleep(15);
     msgsnd(threadInfo -> qid, &qvalue, sizeof(qvalue.freeThread), 0);
     pthread_exit(NULL);
@@ -53,7 +49,7 @@ int main(int argc, char** argv)
 
     ThreadInfo* threadInfo = malloc(numberOfThreads * sizeof(*threadInfo));
     pthread_t* threads = (pthread_t*) malloc(numberOfThreads * sizeof(*threads));
-    qvalue_t qvalue = {QUEUE_CHANNEL , 0};
+    QueueValue_t qvalue = {QUEUE_CHANNEL , 0};
     int i;
     for (i = 0; i < numberOfThreads; i++)
     {
