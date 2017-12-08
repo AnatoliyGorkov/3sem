@@ -9,6 +9,10 @@ typedef struct ThreadInfo_
     int qid;
 } ThreadInfo;
 
+/*
+fixit: называйте типы в одном стиле: QueueValue_t
+заглавная первая буква
+*/
 typedef struct qvalue_t_
 {
     long mtype;
