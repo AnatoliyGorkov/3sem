@@ -16,7 +16,7 @@ enum Result {
     Error
 };
 
-enum Result finderRecursive(char* name, Path* path, int depth)    //1 if found, 0 if not, -1 if error
+enum Result findRecursive(char* name, Path* path, int depth)    //1 if found, 0 if not, -1 if error
 {
     if (depth < 0)
         return NotFound;
@@ -41,7 +41,7 @@ enum Result finderRecursive(char* name, Path* path, int depth)    //1 if found, 
             strncmp("..", dirent -> d_name, 2))
             {
                 pathAdd(path, dirent -> d_name);
-                if ((retval = finderRecursive(name, path, depth - 1)) == Found)
+                if ((retval = findRecursive(name, path, depth - 1)) == Found)
                     return Found;
                 else if (retval == NotFound)
                     pathCutLevel(path);
@@ -64,7 +64,7 @@ int findFile(char* name, int depth)
     path -> name [0] = '.';
     path -> name[1] = '\0';
     path -> currSize++;
-    if ((retval = finderRecursive(name, path, depth)) == NotFound)
+    if ((retval = findRecursive(name, path, depth)) == NotFound)
         printf("File has not been found\n");
     else if (retval == Found)
         printf("%s\n", path -> name);
