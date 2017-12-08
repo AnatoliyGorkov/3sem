@@ -10,6 +10,10 @@
 #define MSG_KEY 1
 #define QUEUE_KEY 2
 
+/*
+FYI: Встречал, что иногда вместо суффикса _ пишут Type или T:
+RequestType
+*/
 typedef struct Request_
 {
     long mtype;
