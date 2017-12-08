@@ -10,21 +10,15 @@
 #define PATHSIZE 64
 #define MAX_DNAME_SIZE 256
 
-/*
-заменить 1, 0, -1 на enum
-*/
 enum Result {
-	Found,
-	NotFound,
-	Error
+    Found,
+    NotFound,
+    Error
 };
 
-/*
-можно обойтись без дополнительной  currentLevel
-*/
-Result finderRecursive(char* name, Path* path, int depth, int currentLevel)    //1 if found, 0 if not, -1 if error
+enum Result finderRecursive(char* name, Path* path, int depth)    //1 if found, 0 if not, -1 if error
 {
-    if (currentLevel > depth)
+    if (depth < 0)
         return NotFound;
     if (path == NULL || path -> name == NULL)
         return Error;
@@ -37,7 +31,7 @@ Result finderRecursive(char* name, Path* path, int depth, int currentLevel)    /
     {
         if (dirent -> d_type == DT_REG)
             if (strncmp(name, dirent -> d_name, MAX_DNAME_SIZE) == 0)
-                return 1;
+                return Found;
     }
     rewinddir(dir);
     while((dirent = readdir(dir)) != NULL)
@@ -47,15 +41,15 @@ Result finderRecursive(char* name, Path* path, int depth, int currentLevel)    /
             strncmp("..", dirent -> d_name, 2))
             {
                 pathAdd(path, dirent -> d_name);
-                if ((retval = finderRecursive(name, path, depth, currentLevel + 1)) == 1)
-                    return 1;
-                else if (retval == 0)
+                if ((retval = finderRecursive(name, path, depth - 1)) == Found)
+                    return Found;
+                else if (retval == NotFound)
                     pathCutLevel(path);
                 else
-                    return -1;
+                    return Error;
             }
     }
-    return 0;
+    return NotFound;
 }
 
 int findFile(char* name, int depth)
@@ -70,9 +64,9 @@ int findFile(char* name, int depth)
     path -> name [0] = '.';
     path -> name[1] = '\0';
     path -> currSize++;
-    if ((retval = finderRecursive(name, path, depth, 0)) == 0)
+    if ((retval = finderRecursive(name, path, depth)) == NotFound)
         printf("File has not been found\n");
-    else if (retval == 1)
+    else if (retval == Found)
         printf("%s\n", path -> name);
     else
         perror("Execution error ");

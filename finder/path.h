@@ -16,7 +16,7 @@ Path* pathConstruct(size_t size)
     Path* path = (Path*) malloc(sizeof(*path));
     if (path == NULL)
         return NULL;
-    path -> name = (char*) malloc(sizeof(*path) * (size + 1));
+    path -> name = (char*) malloc(sizeof(char) * (size + 1));
     if (path -> name == NULL)
     {
         free(path);
