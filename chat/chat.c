@@ -8,7 +8,6 @@ int main(int argc, char** argv)
     char fifoName[FIFONAMESIZE];
     int i = 1;
     sprintf(fifoName, FIFONAMETEMPLATE, i);
-    // printf("1\n");
     while(mknod(fifoName, S_IFIFO | 0666, 0) == -1)
     {
         if (errno != EEXIST)
@@ -16,18 +15,16 @@ int main(int argc, char** argv)
         i++;
         sprintf(fifoName, FIFONAMETEMPLATE, i);
     }
-    // printf("1\n");
 
     ChatConnect chatConnect = {CHAT_CHANNEL, i};
     msgsnd(msgid, &chatConnect, sizeof(chatConnect.n), 0);
-    // printf("1\n");
     int fifofd = open(fifoName, O_RDONLY);
     Buffer* buffer = bufferConstruct(BUFFERSIZE);
     while(1)
     {
-        getMessage(fifofd, buffer);
+        //!!!
+        getFifoMessage(fifofd, buffer);
         printf("<%s>: %s", buffer -> buffer, buffer -> buffer + MAXLOGINSIZE);
-
     }
 
     return 0;

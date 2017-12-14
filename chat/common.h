@@ -14,11 +14,10 @@
 #include <termios.h>
 #include <stdbool.h>
 #include <signal.h>
-#include "list.h"
 #include <string.h>
 #include <errno.h>
 typedef int int32_t;
-
+typedef unsigned int uint32_t;
 #define CHAT_KEY 5
 #define QUEUE_CHANNEL 2
 #define SHUTDOWN_CHANNEL 3
@@ -34,10 +33,16 @@ typedef int int32_t;
 #define FIFONAMESIZE 32
 #define FIFONAMETEMPLATE "chat%d.fifo"
 #define LEFTCHATMSGSIZE 64
+#define TYP_NAMEOK 0x2222222
+#define TYP_NAMEBUSY 0x1234567
 #define TYP_MSG 0xaaaaaaaa
 #define TYP_EXIT 0x55555555
-
+#define TYP_SHTDWN 0x11111111   //server shutdown command
 #define STR_EXIT "<exit>\n"
+#define STR_SHTDWN "<server shutdown>\n"
+#define PASWDCONFIRM 0xCCCCCCCC
+#define PASWDWROND 0xDEADBEEF
+#define PASWDFILE "shadow.txt"
 
 typedef struct ChatConnect_
 {
@@ -51,7 +56,14 @@ typedef struct Buffer_
     size_t maxSize;
 } Buffer;
 
-void echo(bool mode) //0 to disable
+typedef struct Data_
+{
+    int socket;
+    int friendsSocket;
+    char name[MAXLOGINSIZE];
+} Data;
+
+void echo(bool mode) //mode = false to disable input to terminal
 {
     struct termios settings;
     tcgetattr(STDIN_FILENO, &settings);
@@ -65,7 +77,11 @@ void echo(bool mode) //0 to disable
 Buffer* bufferConstruct(size_t maxSize)
 {
     Buffer* buffer = (Buffer*) malloc(sizeof(*buffer));
+    if (buffer == NULL)
+        return NULL;
     char* data = (char*) malloc(maxSize * sizeof(*data));
+    if (data == NULL)
+        return NULL;
     buffer -> buffer = data;
     buffer -> maxSize = maxSize;
     return buffer;
@@ -78,6 +94,11 @@ int bufferDestruct(Buffer* buffer)
     return 0;
 }
 
+/*
+    bufferExpand doubles the size of the buffer
+    if it can't if increaces the size by FRAMESIZE bytes
+    if it can't - fails with NULL
+*/
 Buffer* bufferExpand(Buffer* buffer)
 {
     char* tmp = (char*) realloc(buffer -> buffer, 2 * buffer -> maxSize * sizeof(char));
@@ -95,51 +116,78 @@ Buffer* bufferExpand(Buffer* buffer)
     return buffer;
 }
 
+/*
+    -1 on error
+*/
 int getMessage(int socket, Buffer* buffer)
 {
     int bytesRead;
     int bytesReadTotal = 0;
-    Buffer* tmp;
     while(1)
     {
-        // printf("2\n");
-        bytesRead = read(socket, buffer -> buffer + bytesReadTotal, FRAMESIZE);
-        if (bytesRead == -1)
-        {
-            perror("wtf");
-        }
-        // printf("3\n");
-        // printf("%d\n", bytesRead);
-        if (bytesRead < 1)
+        bytesRead = recv(socket, buffer -> buffer + bytesReadTotal, FRAMESIZE, 0);
+        if (bytesRead == -1 || bytesRead == 0)
+            return -1;
+        if (bytesRead == 0)
             break;
         bytesReadTotal += bytesRead;
         if (*(buffer -> buffer + bytesReadTotal - 1) == '\n')
             break;
         if (bytesReadTotal + FRAMESIZE >= buffer -> maxSize)
         {
-            tmp = bufferExpand(buffer);
-            if (tmp != NULL)
-                buffer = tmp;
+            if (bufferExpand(buffer) == NULL)
+                return -1;
         }
     }
     *(buffer -> buffer + bytesReadTotal) = '\0';
-    // printf("<>%d\n", bytesReadTotal);
     return bytesReadTotal;
 }
 
-int sendMessage(List* users, char* message, char* name)
+int getFifoMessage(int fd, Buffer* buffer)
 {
-    if (users -> size == 0)
-        return 1;
-    ListElement* elem = users -> head;
-    int i;
-    for (i = 0; i < users -> size; i++)
+    int bytesRead;
+    int bytesReadTotal = 0;
+    while(1)
     {
-        if (send(elem -> value, name, MAXLOGINSIZE, 0) == -1)
-            perror("send1");
-        if (send(elem -> value, message, strlen(message), 0) == -1)
-            perror("send2");
-        elem = elem -> next;
+        bytesRead = read(fd, buffer -> buffer + bytesReadTotal, FRAMESIZE);
+        if (bytesRead == -1)
+            return -1;
+        if (bytesRead == 0)
+            break;
+        bytesReadTotal += bytesRead;
+        if (*(buffer -> buffer + bytesReadTotal - 1) == '\n')
+            break;
+        if (bytesReadTotal + FRAMESIZE >= buffer -> maxSize)
+        {
+            if (bufferExpand(buffer) == NULL)
+                return -1;
+        }
     }
-    return 0;
+    *(buffer -> buffer + bytesReadTotal) = '\0';
+    return bytesReadTotal;
+}
+
+/*
+    if return value is not 0, error occured. Errors if thread == damaged thread. Errno is set by call to send()
+*/
+int sendMessage(Data* users, size_t size, int thread, const char* message, const char* name, int msgType)
+{
+    int socketDamaged = 0;
+    size_t i = 0;
+    switch(msgType)
+    {
+    case TYP_MSG:
+        for (i = 0; i < size; i++)
+        {
+            if (users[i].socket != 0)
+            {
+                if ((send(users[i].socket, &msgType, sizeof(msgType), 0) == -1 ||
+                    send(users[i].socket, name, MAXLOGINSIZE, 0) == -1 ||
+                    send(users[i].socket, message, strlen(message), 0) == -1)
+                    && i == thread)
+                    socketDamaged = -1;
+            }
+        }
+    }
+    return socketDamaged;
 }
