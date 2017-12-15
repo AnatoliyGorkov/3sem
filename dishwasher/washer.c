@@ -11,7 +11,6 @@ int main(int argc, char** argv)
     }
 
     int tableSize = atoi(argv[3]);
-    printf("%d\n", tableSize);
     FILE* dishesFile = fopen(argv[2], "r");
     if (dishesFile == NULL)
     {
@@ -30,7 +29,6 @@ int main(int argc, char** argv)
     int sem2 = semget(sem2key, 1, IPC_CREAT | 0666);
     int sem3 = semget(sem3key, 1, IPC_CREAT | 0666);
     int shmid = shmget(shmkey, tableSize * sizeof(int), IPC_CREAT | 0666);
-    printf("%d\n", shmid);
     int* table = shmat(shmid, NULL, 0);
 
     int dishType, dishNumber, i;
@@ -60,6 +58,10 @@ int main(int argc, char** argv)
         }
     }
 
+
+    printTime();
+    printf(" Finished\n");
+
     sOp(sem2, -1);
     sOp(sem3, 1);
     
@@ -68,11 +70,11 @@ int main(int argc, char** argv)
     sOp(sem1, 1);
 
 
-    printTime();
-    printf(" Finished\n");
     shmdt(table);
     fclose(dishesFile);
     free(speed);
     sOp(sem1, 2);
+    printTime();
+    printf(" Left work\n");
     return 0;
 }

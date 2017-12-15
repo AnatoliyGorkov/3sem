@@ -22,10 +22,12 @@ int main(int argc, char** argv)
     int sem2 = semget(sem2key, 1, IPC_CREAT | 0666);    //sem2 is for free space
     int sem3 = semget(sem3key, 1, IPC_CREAT | 0666);    //sem3 if for taken space
     int shmid = shmget(shmkey, tableSize * sizeof(int), IPC_CREAT | 0666);
-    printf("%d\n", shmid);
+    // printf("%d\n", shmid);
     int* table = shmat(shmid, NULL, 0);
     int dishType;
     int tablePosition = 0;
+    printTime();
+    printf(" Came to work. Waiting for washer\n");
     sOp(sem1, -1);
     while(1)
     {
